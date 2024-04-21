@@ -9,10 +9,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class DatabaseUtil {
     private val database = Database.connect(
-        url = "jdbc:mariadb://0.0.0.0:3306/api", // TODO: connection configuration
+        url = "jdbc:mariadb://${Config.database_url}/${Config.database_name}",
         driver = "org.mariadb.jdbc.Driver",
-        user = "root",
-        password = ""
+        user = Config.database_username,
+        password = Config.database_password
     )
 
     init {

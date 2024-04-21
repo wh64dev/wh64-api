@@ -30,6 +30,7 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.10")
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")

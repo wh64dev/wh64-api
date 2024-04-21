@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import net.wh64.api.model.check.HealthCheck
 
-@WebServlet(name = "api", value = ["/v1"])
+@WebServlet(name = "api", value = ["/v1", "/v1/"])
 class APIServlet : HttpServlet() {
     override fun doGet(req: HttpServletRequest, res: HttpServletResponse) {
         val start = System.currentTimeMillis()
