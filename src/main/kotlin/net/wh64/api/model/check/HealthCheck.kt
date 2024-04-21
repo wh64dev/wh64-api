@@ -1,4 +1,4 @@
-package net.wh64.api.model
+package net.wh64.api.model.check
 
 data class HealthCheck(
     val ok: Int,

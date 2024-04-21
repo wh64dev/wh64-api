@@ -5,7 +5,7 @@ import jakarta.servlet.annotation.WebServlet
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import net.wh64.api.model.HealthCheck
+import net.wh64.api.model.check.HealthCheck
 
 @WebServlet(name = "api", value = ["/v1"])
 class APIServlet : HttpServlet() {
@@ -17,7 +17,7 @@ class APIServlet : HttpServlet() {
 
         val gson = Gson()
         res.writer.use { out ->
-            val raw = HealthCheck(1, 200, "${System.currentTimeMillis() - start}ms")
+            val raw = HealthCheck(1, res.status, "${System.currentTimeMillis() - start}ms")
             out.write(gson.toJson(raw))
         }
     }

@@ -23,13 +23,19 @@ repositories {
 }
 
 val junitVersion = "5.10.0"
+val exposedVersion = "0.49.0"
 
 dependencies {
     compileOnly("jakarta.servlet:jakarta.servlet-api:6.0.0")
-    implementation("com.google.code.gson:gson:2.10.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
+    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
 
 tasks {
