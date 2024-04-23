@@ -31,4 +31,8 @@ class APIServlet : HttpServlet() {
             out.write(gson.toJson(raw))
         }
     }
+
+    override fun destroy() {
+        database.close()
+    }
 }
