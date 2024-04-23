@@ -1,6 +1,7 @@
 package net.wh64.api.util
 
 import kotlinx.coroutines.Dispatchers
+import net.wh64.api.Config
 import net.wh64.api.model.MessageLog
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils

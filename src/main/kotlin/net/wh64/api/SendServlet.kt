@@ -10,7 +10,6 @@ import net.wh64.api.model.Error
 import net.wh64.api.model.MessageLog
 import net.wh64.api.model.MessagePayload
 import net.wh64.api.model.check.SendCheck
-import net.wh64.api.util.Config
 import net.wh64.api.util.DatabaseUtil
 import org.jetbrains.exposed.sql.insert
 import java.util.*

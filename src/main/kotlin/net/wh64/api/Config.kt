@@ -1,4 +1,4 @@
-package net.wh64.api.util
+package net.wh64.api
 
 import java.util.Properties
 import kotlin.reflect.KProperty
