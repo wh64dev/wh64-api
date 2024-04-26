@@ -1,7 +1,8 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.pm20.util.archivesName
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "1.9.23"
     java
     war
 }
@@ -54,5 +55,16 @@ tasks {
 
     compileTestKotlin {
         kotlinOptions.jvmTarget = "21"
+    }
+
+    processResources {
+        filesMatching("config.properties") {
+            expand(project.properties)
+        }
+    }
+
+    war {
+        project.archivesName.set("wh64-api")
+        project.version = ""
     }
 }

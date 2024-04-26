@@ -27,7 +27,11 @@ class APIServlet : HttpServlet() {
 
         val gson = Gson()
         res.writer.use { out ->
-            val raw = HealthCheck(1, res.status, "${System.currentTimeMillis() - start}ms")
+            val raw = HealthCheck(
+                ok = 1,
+                status = res.status,
+                version = Config.version,
+                respond_time = "${System.currentTimeMillis() - start}ms")
             out.write(gson.toJson(raw))
         }
     }
