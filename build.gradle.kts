@@ -62,9 +62,4 @@ tasks {
             expand(project.properties)
         }
     }
-
-    war {
-        project.archivesName.set("wh64-api")
-        project.version = ""
-    }
 }
