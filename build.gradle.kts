@@ -58,7 +58,7 @@ tasks {
     }
 
     processResources {
-        filesMatching("config.properties") {
+        filesMatching("default.properties") {
             expand(project.properties)
         }
     }
