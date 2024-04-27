@@ -38,11 +38,23 @@ class HanRiver(area: Int) {
     )
 
     fun build(): HanRiverData {
+        val temp = try {
+            unwrapQuote(data.jsonObject["W_TEMP"].toString()).toDouble()
+        } catch (_: NumberFormatException) {
+            -1.0
+        }
+
+        val ph = try {
+            unwrapQuote(data.jsonObject["W_PH"].toString()).toDouble()
+        } catch (_: NumberFormatException) {
+            -1.0
+        }
+
         return HanRiverData(
             area = unwrapQuote(data.jsonObject["SITE_ID"].toString()),
             datetime = datetime,
-            temp = unwrapQuote(data.jsonObject["W_TEMP"].toString()).toDouble(),
-            ph = unwrapQuote(data.jsonObject["W_PH"].toString()).toDouble()
+            temp = temp,
+            ph = ph
         )
     }
 }

@@ -1,6 +1,6 @@
 package net.wh64.api
 
-import java.util.Properties
+import java.util.*
 import kotlin.reflect.KProperty
 
 object Config {

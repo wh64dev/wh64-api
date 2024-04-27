@@ -23,11 +23,18 @@ class HanRiverServlet : HttpServlet() {
         res.status = HttpServletResponse.SC_OK
         val area = Random.nextInt(1, 6)
 
+        var ok = 1
+        val data = HanRiver(area).build()
+
+        if (data.temp == -1.0) {
+            ok = 0
+        }
+
         res.writer.write(gson.toJson(HanRiverResp(
-            ok = 1,
+            ok = ok,
             status = res.status,
             area_code = area,
-            data = HanRiver(area).build(),
+            data = data,
             respond_time = "${System.currentTimeMillis() - start}ms"
         )))
 
@@ -65,12 +72,20 @@ class HanRiverNumberServlet : HttpServlet() {
         }
 
         res.status = HttpServletResponse.SC_OK
+
+        var ok = 1
+        val data = HanRiver(area).build()
+
+        if (data.temp == -1.0) {
+            ok = 0
+        }
+
         res.writer.use { out ->
             out.write(gson.toJson(HanRiverResp(
-                ok = 1,
+                ok = ok,
                 status = res.status,
                 area_code = area,
-                data = HanRiver(area).build(),
+                data = data,
                 respond_time = "${System.currentTimeMillis() - start}ms"
             )))
 
