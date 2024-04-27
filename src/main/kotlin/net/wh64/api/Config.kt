@@ -22,7 +22,7 @@ object Config {
 }
 
 @Suppress("UNCHECKED_CAST")
-class ConfigDelegate<T> {
+private class ConfigDelegate<T> {
     private val props = Properties()
 
     init {
@@ -33,7 +33,7 @@ class ConfigDelegate<T> {
 }
 
 @Suppress("UNCHECKED_CAST")
-class DefaultDelegate<T> {
+private class DefaultDelegate<T> {
     private val props = Properties()
 
     init {
