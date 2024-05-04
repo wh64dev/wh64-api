@@ -7,12 +7,13 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
 import net.wh64.api.model.check.HealthCheck
-import net.wh64.api.util.DatabaseUtil
+import net.wh64.api.service.core.DatabaseService
+import net.wh64.api.util.DBConnection
 import org.jetbrains.exposed.sql.SchemaUtils
 
 @WebServlet(name = "api", value = ["/v1", "/v1/"])
 class APIServlet : HttpServlet() {
-    private val database = DatabaseUtil()
+    private val database = DBConnection()
 
     override fun doGet(req: HttpServletRequest, res: HttpServletResponse) {
         val start = System.currentTimeMillis()
@@ -20,7 +21,7 @@ class APIServlet : HttpServlet() {
         res.status = HttpServletResponse.SC_OK
         res.characterEncoding = Charsets.UTF_8.name()
         runBlocking {
-            database.dbQuery {
+            DatabaseService(database.open(), null).dbQuery {
                 return@dbQuery SchemaUtils.listTables()
             }
         }

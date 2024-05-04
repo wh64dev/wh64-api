@@ -1,0 +1,63 @@
+@font-face {
+    font-family: "Pretendard";
+    src: url("/public/fonts/Pretendard.woff2");
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: "JetBrainsMono";
+    src: url("/public/fonts/JetBrainsMono.woff2");
+    font-weight: 300;
+}
+
+:root {
+    --font-default: "Pretendard", serif;
+    --font-mono: "JetBrainsMono", ui-monospace, monospace;
+
+    --background: #111111;
+    --font-color: #dddddd;
+    --font-hover: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    color: var(--font-color);
+    font-family: var(--font-default);
+}
+
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+
+    height: 100%;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--background);
+}
+
+a {
+    text-decoration: none;
+    color: var(--font-color);
+    transition-duration: 300ms;
+}
+
+a:hover {
+    color: var(--font-hover);
+    transition-duration: 300ms;
+}
+
+pre, code {
+    font-family: var(--font-mono);
+}
+
+hr {
+    margin: 1rem 0;
+    width: 70%;
+}

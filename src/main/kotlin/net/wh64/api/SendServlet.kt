@@ -7,16 +7,15 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
 import net.wh64.api.model.Error
-import net.wh64.api.model.MessageLog
 import net.wh64.api.model.MessagePayload
 import net.wh64.api.model.check.SendCheck
-import net.wh64.api.util.DatabaseUtil
-import org.jetbrains.exposed.sql.insert
+import net.wh64.api.service.SendService
+import net.wh64.api.util.DBConnection
 import java.util.*
 
 @WebServlet(name = "sendServlet", value = ["/v1/send", "/v1/send/"])
 class SendServlet : HttpServlet() {
-    private val database = DatabaseUtil()
+    private val database = DBConnection()
     private val gson = Gson()
 
     private fun except(res: HttpServletResponse, reason: String) {
@@ -34,26 +33,16 @@ class SendServlet : HttpServlet() {
         res.contentType = "application/json"
         res.addHeader("Access-Control-Allow-Origin", Config.inline_allowed_cors)
 
-        val id = UUID.randomUUID().toString()
+        val id = UUID.randomUUID()
         val addr = req.getHeader("X-Forwarded-For") ?: req.remoteAddr
         val message = req.getParameter("message") ?: return except(res, "parameter cannot be empty")
         if (message.length > 100) {
             return except(res, "message parameter length cannot be greater than 100")
         }
 
+        val service = SendService(database.open())
         val payload: MessagePayload = try {
-            runBlocking {
-                database.dbQuery {
-                    MessageLog.insert {
-                        it[this.id] = id
-                        it[this.addr] = addr
-                        it[this.created] = System.currentTimeMillis()
-                        it[this.message] = message
-                    }
-
-                    return@dbQuery MessagePayload(id, addr, message)
-                }
-            }
+            runBlocking { service.send(id, addr, message) }
         } catch (ex: Exception) {
             res.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
             res.writer.use { out ->
