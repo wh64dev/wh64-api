@@ -28,6 +28,8 @@ class SendServlet : HttpServlet() {
     }
 
     override fun doPost(req: HttpServletRequest, res: HttpServletResponse) {
+        res.addHeader("Access-Control-Allow-Origin", "*")
+
         val start = System.currentTimeMillis()
         res.characterEncoding = "UTF-8"
         res.contentType = "application/json"
