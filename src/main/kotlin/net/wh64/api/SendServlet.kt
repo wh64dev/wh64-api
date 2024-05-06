@@ -28,22 +28,25 @@ class SendServlet : HttpServlet() {
     }
 
     override fun doPost(req: HttpServletRequest, res: HttpServletResponse) {
-        res.addHeader("Access-Control-Allow-Origin", Config.inline_allowed_cors)
-
         val start = System.currentTimeMillis()
         res.characterEncoding = "UTF-8"
         res.contentType = "application/json"
 
         val id = UUID.randomUUID()
         val addr = req.getHeader("X-Forwarded-For") ?: req.remoteAddr
+        val nickname = req.getParameter("nickname") ?: "Anonymous"
         val message = req.getParameter("message") ?: return except(res, "parameter cannot be empty")
         if (message.length > 100) {
             return except(res, "message parameter length cannot be greater than 100")
         }
 
+        if (nickname.length > 20) {
+            return except(res, "nickname parameter length cannot be greater than 20")
+        }
+
         val service = SendService(database.open())
         val payload: MessagePayload = try {
-            runBlocking { service.send(id, addr, message) }
+            runBlocking { service.send(id, addr, nickname, message) }
         } catch (ex: Exception) {
             res.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
             res.writer.use { out ->

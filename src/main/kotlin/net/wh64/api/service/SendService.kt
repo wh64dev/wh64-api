@@ -11,16 +11,18 @@ class SendService(database: Database) : DatabaseService(database, MessageLog) {
     object MessageLog : Table("message_log") {
         val id = varchar("id", 36)
         val addr = varchar("addr", 15)
+        val nickname = varchar("nickname", 20).default("Anonymous")
         val created = long("created")
         val message = text("message")
 
         override val primaryKey = PrimaryKey(id, name = "PK_MessageLog_ID")
     }
 
-    suspend fun send(id: UUID, addr: String, message: String): MessagePayload = dbQuery {
+    suspend fun send(id: UUID, addr: String, nickname: String, message: String): MessagePayload = dbQuery {
         MessageLog.insert {
             it[this.id] = id.toString()
             it[this.addr] = addr
+            it[this.nickname] = nickname
             it[this.message] = message
             it[this.created] = System.currentTimeMillis()
         }
