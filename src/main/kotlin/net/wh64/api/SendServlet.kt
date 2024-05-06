@@ -28,10 +28,11 @@ class SendServlet : HttpServlet() {
     }
 
     override fun doPost(req: HttpServletRequest, res: HttpServletResponse) {
+        res.addHeader("Access-Control-Allow-Origin", Config.inline_allowed_cors)
+
         val start = System.currentTimeMillis()
         res.characterEncoding = "UTF-8"
         res.contentType = "application/json"
-        res.addHeader("Access-Control-Allow-Origin", Config.inline_allowed_cors)
 
         val id = UUID.randomUUID()
         val addr = req.getHeader("X-Forwarded-For") ?: req.remoteAddr
