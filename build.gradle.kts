@@ -6,7 +6,7 @@ val logback_version: String by project
 
 plugins {
     kotlin("jvm") version "1.9.24"
-    id("io.ktor.plugin") version "2.3.10"
+    id("io.ktor.plugin") version "2.3.11"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
     java
@@ -42,6 +42,7 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
     implementation("io.ktor:ktor-server-content-negotiation-jvm")
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm")
+    implementation("io.ktor:ktor-server-rate-limit:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     testImplementation("io.ktor:ktor-server-tests-jvm")

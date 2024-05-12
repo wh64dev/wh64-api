@@ -17,6 +17,7 @@ fun Application.configureHTTP() {
         allowHeader("MyCustomHeader")
         anyHost()
     }
+
     routing {
         swaggerUI(path = "openapi")
     }

@@ -2,6 +2,7 @@ package net.wh64.api
 
 import org.jetbrains.exposed.sql.exposedLogger
 import java.io.File
+import java.nio.charset.Charset
 import java.util.Properties
 import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
@@ -32,15 +33,14 @@ private class ConfigDelegate<T> : DelegateGenerator<T> {
         val file = File("./config.properties")
         if (!file.exists()) {
             val stream = javaClass.getResourceAsStream("/config.properties")!!
+            stream.use { buf ->
+                val buffer = buf.readAllBytes()
 
-            stream.use {
-                File.createTempFile("config", ".properties").bufferedWriter().use {
-                    it.write(stream.readBytes().toString(Charsets.UTF_8))
-                }
+                file.createNewFile()
+                file.writeBytes(buffer)
             }
 
-            exposedLogger.error("config not found in your service directory. please edit `config.properties` file first.")
-            exitProcess(1)
+            throw NullPointerException("config not found in your service directory. please edit `config.properties` file first.")
         }
 
         props.load(file.inputStream())
@@ -53,7 +53,7 @@ private class DefaultDelegate<T> : DelegateGenerator<T> {
     override fun getValue(thisRef: Any, property: KProperty<*>): T = props[property.name] as T
 
     init {
-        props.load(javaClass.getResourceAsStream("/default.properties"))
+        props.load(javaClass.getResourceAsStream("/setting.properties"))
     }
 }
 
