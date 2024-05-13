@@ -1,11 +1,8 @@
 package net.wh64.api
 
-import org.jetbrains.exposed.sql.exposedLogger
 import java.io.File
-import java.nio.charset.Charset
 import java.util.Properties
 import kotlin.reflect.KProperty
-import kotlin.system.exitProcess
 
 object Config {
     private fun <T> useConfig(): ConfigDelegate<T> {
@@ -20,6 +17,11 @@ object Config {
     val db_name: String by useConfig()
     val db_username: String by useConfig()
     val db_password: String by useConfig()
+
+    val jwt_secret: String by useConfig()
+    val jwt_issuer: String by useConfig()
+    val jwt_realms: String by useConfig()
+    val jwt_audience: String by useConfig()
 
     val version: String by useProject()
 }
