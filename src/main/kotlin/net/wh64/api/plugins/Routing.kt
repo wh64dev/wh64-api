@@ -7,14 +7,18 @@ import io.ktor.server.plugins.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.wh64.api.Config
 import net.wh64.api.service.DatabaseHealthCheck
 import net.wh64.api.model.ErrorPrinter
 import net.wh64.api.model.HealthCheck
+import net.wh64.api.model.MessagePayload
 import net.wh64.api.model.ResultPrinter
+import net.wh64.api.service.SendService
 import org.jetbrains.exposed.sql.Database
+import java.util.*
 import kotlin.math.ceil
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,6 +32,7 @@ fun Application.configureRouting() {
         password = Config.db_password
     )
     val healthCheck = DatabaseHealthCheck(database)
+    val sendService = SendService(database)
 
     install(RateLimit) {
         global {
@@ -79,6 +84,31 @@ fun Application.configureRouting() {
                     ResultPrinter(
                         response_time = "${System.currentTimeMillis() - start}ms",
                         data = mapOf("id" to id)
+                    )
+                )
+            }
+
+            post("/send") {
+                val start = System.currentTimeMillis()
+                val form = call.receiveParameters()
+
+                val nickname = form["nickname"] ?: "Anonymous"
+                val message = form["message"].toString()
+
+                if (message.isBlank()) {
+                    throw BadRequestException("`message` parameter cannot be null")
+                }
+
+                if (message.length > 100) {
+                    throw BadRequestException("`message` parameter length cannot greater than 100 characters")
+                }
+
+                val data = sendService.send(UUID.randomUUID(), call.request.origin.remoteAddress, nickname, message)
+                call.respond(
+                    HttpStatusCode.OK,
+                    ResultPrinter(
+                        response_time = "${System.currentTimeMillis() - start}ms",
+                        data = mapOf("payload_id" to data.id)
                     )
                 )
             }
