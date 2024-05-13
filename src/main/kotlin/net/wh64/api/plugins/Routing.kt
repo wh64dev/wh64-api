@@ -44,7 +44,7 @@ fun Application.configureRouting() {
                 status,
                 ErrorPrinter(
                     status = status.value,
-                    errno = "you are many sending requests! please wait 3 seconds."
+                    errno = "You are throttled! Please wait 3 seconds."
                 )
             )
         }
@@ -72,12 +72,14 @@ fun Application.configureRouting() {
         route("/v1") {
             get {
                 val start = System.currentTimeMillis()
-                val id = healthCheck.insert()
+                val id = healthCheck.insert(start)
 
-                call.respond(HttpStatusCode.OK, ResultPrinter(
-                    response_time = "${System.currentTimeMillis() - start}ms",
-                    data = mapOf("id" to id)
-                )
+                call.respond(
+                    HttpStatusCode.OK,
+                    ResultPrinter(
+                        response_time = "${System.currentTimeMillis() - start}ms",
+                        data = mapOf("id" to id)
+                    )
                 )
             }
 
@@ -100,12 +102,12 @@ fun Application.configureRouting() {
 
                 if (page != null) {
                     if (page <= 0 || ceil(healthCheck.count().toDouble() / size.toDouble()).toInt() < page) {
-                        throw BadRequestException("page parameter must range to 1~${ceil(healthCheck.count().toDouble() / size.toDouble()).toInt()}")
+                        throw BadRequestException("`page` parameter must 1~${ceil(healthCheck.count().toDouble() / size.toDouble()).toInt()}")
                     }
                 }
 
                 if (size <= 0 || size > healthCheck.count()) {
-                    throw BadRequestException("size parameter must range to 1~${healthCheck.count()}")
+                    throw BadRequestException("`size` parameter must 1~${healthCheck.count()}")
                 }
 
                 val data = if (page == null) {

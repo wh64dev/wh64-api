@@ -11,6 +11,7 @@ import java.util.*
 class DatabaseHealthCheck(database: Database) {
     object HealthCheckTable : Table("health_check") {
         val id = integer("id").autoIncrement()
+        val responseTime = long("response_time")
         val timestamp = long("request_timestamp")
         val transactionId = varchar("transaction_id", 36)
 
@@ -28,9 +29,10 @@ class DatabaseHealthCheck(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
-    suspend fun insert(): Int = dbQuery {
+    suspend fun insert(start: Long): Int = dbQuery {
         HealthCheckTable.insert {
             it[timestamp] = System.currentTimeMillis()
+            it[responseTime] = System.currentTimeMillis() - start
             it[transactionId] = UUID.randomUUID().toString()
         }[HealthCheckTable.id]
     }
@@ -43,6 +45,7 @@ class DatabaseHealthCheck(database: Database) {
         HealthCheckTable.selectAll().orderBy(HealthCheckTable.timestamp, SortOrder.DESC).limit(size).map {
             HealthCheck(
                 it[HealthCheckTable.id],
+                "${it[HealthCheckTable.responseTime]}ms",
                 it[HealthCheckTable.transactionId],
                 format.format(it[HealthCheckTable.timestamp])
             )
@@ -55,6 +58,7 @@ class DatabaseHealthCheck(database: Database) {
             .limit(size, (size * (page - 1).toLong())).map {
                 HealthCheck(
                     it[HealthCheckTable.id],
+                    "${it[HealthCheckTable.responseTime]}ms",
                     it[HealthCheckTable.transactionId],
                     format.format(it[HealthCheckTable.timestamp])
                 )

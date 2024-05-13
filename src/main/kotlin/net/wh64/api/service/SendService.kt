@@ -39,4 +39,3 @@ class SendService(database: Database) {
         return@dbQuery MessagePayload(id.toString(), message, addr)
     }
 }
-
