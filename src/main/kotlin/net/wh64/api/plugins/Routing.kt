@@ -73,33 +73,6 @@ fun Application.configureRouting() {
         }
     }
 
-    authentication {
-        jwt {
-            realm = Config.jwt_realms
-            verifier(
-                JWT
-                    .require(Algorithm.HMAC256(Config.jwt_secret))
-                    .withAudience(Config.jwt_audience)
-                    .withIssuer(Config.jwt_issuer)
-                    .build()
-            )
-
-            validate { credential ->
-                if (credential.payload.audience.contains(Config.jwt_audience)) JWTPrincipal(credential.payload) else null
-            }
-
-            challenge { _, _ ->
-                call.respond(
-                    HttpStatusCode.Unauthorized,
-                    ErrorPrinter(
-                        status = HttpStatusCode.Unauthorized.value,
-                        errno = "token is not invalid or has expired"
-                    )
-                )
-            }
-        }
-    }
-
     routing {
         get {
             call.respondRedirect(Url(REPO_URL))
