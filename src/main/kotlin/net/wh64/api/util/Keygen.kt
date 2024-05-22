@@ -4,10 +4,10 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import net.wh64.api.Config
-import net.wh64.api.model.User
+import net.wh64.api.service.Account
 import java.util.*
 
-object JWTProvider {
+object Keygen {
     private val secret = Config.jwt_secret
     private val issuer = Config.jwt_issuer
     private val audience = Config.jwt_audience
@@ -22,16 +22,18 @@ object JWTProvider {
     fun verifier(): JWTVerifier {
         return JWT.require(algorithm)
             .withIssuer(issuer)
+            .withAudience(audience)
             .build()
     }
 
-    fun genToken(user: User): String {
+    fun token(acc: Account): String {
         return JWT.create()
-            .withSubject("Project API Authentication")
+            .withSubject("WH64 API Authentication")
             .withIssuer(issuer)
             .withAudience(audience)
-            .withClaim("user_id", user.id.toString())
-            .withClaim("username", user.username)
+            .withClaim("email", acc.email)
+            .withClaim("user_id", acc.id.toString())
+            .withClaim("username", acc.username)
             .withExpiresAt(getExpired())
             .sign(algorithm)
     }

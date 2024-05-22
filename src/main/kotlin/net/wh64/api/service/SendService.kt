@@ -1,15 +1,18 @@
 package net.wh64.api.service
 
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import kotlinx.coroutines.Dispatchers
 import net.wh64.api.model.MessagePayload
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class SendService(database: Database) {
-    object MessageLog : Table("message_log") {
-        val id = varchar("id", 36)
+    object MessageLog : Table("message") {
+        val id = uuid("id")
         val addr = varchar("addr", 15)
         val nickname = varchar("nickname", 20).default("Anonymous")
         val created = long("created")
@@ -29,7 +32,7 @@ class SendService(database: Database) {
 
     suspend fun send(id: UUID, addr: String, nickname: String, message: String): MessagePayload = dbQuery {
         MessageLog.insert {
-            it[this.id] = id.toString()
+            it[this.id] = id
             it[this.addr] = addr
             it[this.nickname] = nickname
             it[this.message] = message

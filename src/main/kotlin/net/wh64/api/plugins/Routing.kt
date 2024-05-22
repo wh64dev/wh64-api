@@ -1,7 +1,5 @@
 package net.wh64.api.plugins
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -15,28 +13,23 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.wh64.api.Config
-import net.wh64.api.service.DatabaseHealthCheck
 import net.wh64.api.model.ErrorPrinter
 import net.wh64.api.model.HealthCheck
-import net.wh64.api.model.MessagePayload
 import net.wh64.api.model.ResultPrinter
-import net.wh64.api.service.SendService
-import org.jetbrains.exposed.sql.Database
+import net.wh64.api.service.*
+import net.wh64.api.util.Keygen
+import net.wh64.api.util.database
 import java.util.*
+import javax.naming.AuthenticationException
 import kotlin.math.ceil
 import kotlin.time.Duration.Companion.seconds
 
 private const val REPO_URL = "https://github.com/wh64dev/wh64-api.git"
 
 fun Application.configureRouting() {
-    val database = Database.connect(
-        url = "jdbc:mariadb://${Config.db_url}/${Config.db_name}",
-        driver = "org.mariadb.jdbc.Driver",
-        user = Config.db_username,
-        password = Config.db_password
-    )
     val healthCheck = DatabaseHealthCheck(database)
     val sendService = SendService(database)
+    val auth = AuthService(database)
 
     install(RateLimit) {
         global {
@@ -70,6 +63,32 @@ fun Application.configureRouting() {
 
         exception<Throwable> { call, cause ->
             call.respond(HttpStatusCode.InternalServerError, ErrorPrinter(errno = cause.toString()))
+        }
+
+        exception<AuthenticationException> { call, cause ->
+            call.respond(HttpStatusCode.Unauthorized, ErrorPrinter(
+                status = HttpStatusCode.Unauthorized.value,
+                errno = cause.toString()
+            ))
+        }
+    }
+
+    authentication {
+        jwt("auth") {
+            realm = Config.jwt_realms
+            verifier(Keygen.verifier())
+
+            validate { credential ->
+                val contain = credential.payload.audience.contains(Config.jwt_audience)
+                val id = UUID.fromString(credential.payload.getClaim("user_id").asString().replace("\"", ""))
+                val exist = auth.find(id) != null
+
+                if (contain && exist) JWTPrincipal(credential.payload) else null
+            }
+
+            challenge { _, _ ->
+                throw AuthenticationException("token is not invalid or has expired")
+            }
         }
     }
 
@@ -157,6 +176,64 @@ fun Application.configureRouting() {
                         data = data
                     )
                 )
+            }
+
+            route("/auth") {
+                post("/login") {
+                    val start = System.currentTimeMillis()
+                    val form = call.receiveParameters()
+
+                    val username = form["username"] ?: throw Exception("`username` parameter must not be null")
+                    val password = form["password"] ?: throw Exception("`password` parameter must not be null")
+
+                    val data = AuthData(username, password)
+                    val res = auth.find(data) ?: throw AuthenticationException("username or password not matches")
+                    val token = Keygen.token(res)
+
+                    call.respond(
+                        HttpStatusCode.OK, ResultPrinter(
+                            data = token,
+                            response_time = "${System.currentTimeMillis() - start}ms"
+                        )
+                    )
+                }
+
+                put("/register") {
+                    val start = System.currentTimeMillis()
+                    val form = call.receiveParameters()
+                    val username = form["username"] ?: throw Exception("`username` parameter must not be null")
+                    val password = form["password"] ?: throw Exception("`password` parameter must not be null")
+                    val checkPW = form["password_check"] ?: throw Exception("`password_check` parameter must not be null")
+                    val email = form["email"] ?: throw Exception("`email` parameter must not be null")
+
+                    if (password != checkPW) {
+                        throw BadRequestException("`password` parameter must match password_check")
+                    }
+
+                    val acc = Account(
+                        id = UUID.randomUUID(),
+                        username = username,
+                        password = password,
+                        email = email
+                    )
+
+                    val id = auth.create(acc)
+                    call.respond(
+                        HttpStatusCode.OK, ResultPrinter(
+                            data = id.toString(),
+                            response_time = "${System.currentTimeMillis() - start}ms"
+                        )
+                    )
+                }
+
+                authenticate("auth") {
+                    get {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+
+                        call.respond(mapOf("hello" to "world", "respond_time" to "${System.currentTimeMillis() - start}ms"))
+                    }
+                }
             }
         }
     }
