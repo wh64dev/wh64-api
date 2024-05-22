@@ -23,8 +23,8 @@ object Config {
     val jwt_realms: String by useConfig()
     val jwt_audience: String by useConfig()
 
-    val salt_size: Int by useConfig()
-    val hash_count: Int by useConfig()
+    val salt_size: String by useConfig()
+    val hash_count: String by useConfig()
 
     val version: String by useProject()
 }

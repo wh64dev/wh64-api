@@ -58,7 +58,7 @@ class AuthService(database: Database) {
     private fun hashToCount(password: String, salt: String): String {
         var hashed = hash("$password:$salt")
 
-        for (i in 0 until Config.hash_count) {
+        for (i in 0 until Config.hash_count.toInt()) {
             hashed = hash("$hashed:$salt")
         }
 
@@ -67,7 +67,7 @@ class AuthService(database: Database) {
 
     suspend fun create(data: Account): UUID = dbQuery {
         val salt = SecureRandom().let {
-            val bytes = ByteArray(Config.salt_size)
+            val bytes = ByteArray(Config.salt_size.toInt())
             it.nextBytes(bytes)
 
             bytes.encodeBase64()
