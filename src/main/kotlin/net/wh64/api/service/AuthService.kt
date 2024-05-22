@@ -1,5 +1,6 @@
 package net.wh64.api.service
 
+import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import net.wh64.api.Config
 import org.jetbrains.exposed.sql.*
@@ -50,27 +51,35 @@ class AuthService(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
+    private suspend fun salt(username: String): String = dbQuery {
+        AuthTable.select(AuthTable.salt).where(AuthTable.username.eq(username)).single()[AuthTable.salt]
+    }
+
+    private fun hashToCount(password: String, salt: String): String {
+        var hashed = hash("$password:$salt")
+
+        for (i in 0 until Config.hash_count) {
+            hashed = hash("$hashed:$salt")
+        }
+
+        return hashed
+    }
+
     suspend fun create(data: Account): UUID = dbQuery {
         val salt = SecureRandom().let {
-            val process = ProcessBuilder("openssl", "rand", "-hex", Config.salt_size)
-            val bytes = process.start().inputStream.bufferedReader().readText().toByteArray()
-
+            val bytes = ByteArray(Config.salt_size)
             it.nextBytes(bytes)
 
-            bytes.decodeToString()
+            bytes.encodeBase64()
         }
 
         AuthTable.insert {
             it[this.id] = data.id
             it[this.username] = data.username
-            it[this.password] = hash("${data.password}:${salt}")
+            it[this.password] = hashToCount(data.password, salt)
             it[this.salt] = salt
             it[this.email] = data.email
         }[AuthTable.id]
-    }
-
-    private suspend fun salt(username: String): String = dbQuery {
-        AuthTable.select(AuthTable.salt).where(AuthTable.username.eq(username)).single()[AuthTable.salt]
     }
 
     suspend fun find(data: AuthData): Account? = dbQuery {
@@ -81,7 +90,7 @@ class AuthService(database: Database) {
         }
 
         AuthTable.select(AuthTable.id, AuthTable.username, AuthTable.password, AuthTable.email)
-            .where { AuthTable.username.eq(data.username) and AuthTable.password.eq(hash("${data.password}:${salt}")) }
+            .where { AuthTable.username.eq(data.username) and AuthTable.password.eq(hashToCount(data.password, salt)) }
             .map {
                 Account(
                     id = it[AuthTable.id],
