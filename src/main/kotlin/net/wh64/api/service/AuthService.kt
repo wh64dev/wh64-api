@@ -1,6 +1,7 @@
 package net.wh64.api.service
 
 import kotlinx.coroutines.Dispatchers
+import net.wh64.api.Config
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -51,10 +52,12 @@ class AuthService(database: Database) {
 
     suspend fun create(data: Account): UUID = dbQuery {
         val salt = SecureRandom().let {
-            val byte = byteArrayOf()
-            it.nextBytes(byte)
+            val process = ProcessBuilder("openssl", "rand", "-hex", Config.salt_size)
+            val bytes = process.start().inputStream.bufferedReader().readText().toByteArray()
 
-            byte.decodeToString()
+            it.nextBytes(bytes)
+
+            bytes.decodeToString()
         }
 
         AuthTable.insert {
