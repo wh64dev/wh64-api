@@ -36,6 +36,8 @@ object Config {
     val salt_size: String by useConfig()
     val hash_count: String by useConfig()
 
+    val inner_rate_limit: String by useConfig()
+
     val version: String by useProject()
 }
 

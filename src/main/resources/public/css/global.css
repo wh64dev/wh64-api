@@ -1,0 +1,32 @@
+@font-face {
+    src: url("/public/fonts/Pretendard.woff2");
+    font-family: "Pretendard";
+    font-weight: 300;
+}
+
+html, body {
+    width: 100vw;
+    height: 100vh;
+
+    overflow-x: hidden;
+    background: #111111;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    color: #ffffff;
+    box-sizing: border-box;
+    font-family: "Pretendard", serif;
+}
+
+a {
+    color: #ffffff;
+    text-decoration: none;
+    transition-duration: 300ms;
+}
+
+a:focus {
+    color: #dddddd;
+    transition-duration: 300ms;
+}

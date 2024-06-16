@@ -8,3 +8,6 @@ class Refresher(
     val account: AccountInfo,
     val refresh_token: String
 )
+
+@Serializable
+class TokenPrinter(val token: String)
