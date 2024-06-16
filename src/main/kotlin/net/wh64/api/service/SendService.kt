@@ -1,12 +1,11 @@
 package net.wh64.api.service
 
-import kotlinx.coroutines.Dispatchers
 import net.wh64.api.model.MessagePayload
+import net.wh64.api.util.dbQuery
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
@@ -27,9 +26,6 @@ class SendService(database: Database) {
         }
     }
 
-    suspend fun <T> dbQuery(block: suspend () -> T): T =
-        newSuspendedTransaction(Dispatchers.IO) { block() }
-
     suspend fun send(id: UUID, addr: String, nickname: String, message: String): MessagePayload = dbQuery {
         MessageLog.insert {
             it[this.id] = id
@@ -39,6 +35,6 @@ class SendService(database: Database) {
             it[this.created] = System.currentTimeMillis()
         }
 
-        return@dbQuery MessagePayload(id.toString(), message, addr)
+        return@dbQuery MessagePayload(id = id.toString(), message = message, addr = addr)
     }
 }

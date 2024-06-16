@@ -7,7 +7,7 @@ import net.wh64.api.plugins.configureHTTP
 import net.wh64.api.plugins.configureRouting
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
+    embeddedServer(Netty, port = Config.port.toInt(), host = Config.host, module = Application::module)
         .start(wait = true)
 }
 

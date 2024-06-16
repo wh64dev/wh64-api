@@ -13,6 +13,9 @@ object Config {
         return DefaultDelegate()
     }
 
+    val host: String by useConfig()
+    val port: String by useConfig()
+
     val db_url: String by useConfig()
     val db_name: String by useConfig()
     val db_username: String by useConfig()
@@ -22,6 +25,13 @@ object Config {
     val jwt_issuer: String by useConfig()
     val jwt_realms: String by useConfig()
     val jwt_audience: String by useConfig()
+
+    val sender_email: String by useConfig()
+    val email_hostname: String by useConfig()
+    val email_smtp_port: String by useConfig()
+    val email_username: String by useConfig()
+    val email_password: String by useConfig()
+    val email_is_ssl: String by useConfig()
 
     val salt_size: String by useConfig()
     val hash_count: String by useConfig()

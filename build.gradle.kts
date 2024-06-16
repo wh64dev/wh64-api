@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val ktor_version: String by project
@@ -9,6 +11,7 @@ plugins {
     id("io.ktor.plugin") version "2.3.11"
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+
     java
 }
 
@@ -17,8 +20,8 @@ version = "1.0.0-SNAPSHOT"
 
 kotlin {
     compilerOptions {
-        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
         apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
     }
 }
 
@@ -37,6 +40,7 @@ dependencies {
     implementation("io.ktor:ktor-server-host-common-jvm")
     implementation("io.ktor:ktor-serialization-gson-jvm")
     implementation("io.ktor:ktor-server-status-pages-jvm")
+    implementation("org.apache.commons:commons-email:1.6.0")
     implementation("org.jetbrains.exposed:exposed-core:0.50.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.50.0")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.3.3")
@@ -62,7 +66,7 @@ tasks {
     }
 
     withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_21.toString()
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
     }
 
     processResources {

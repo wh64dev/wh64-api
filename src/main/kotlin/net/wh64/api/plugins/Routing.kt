@@ -13,21 +13,19 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.wh64.api.Config
-import net.wh64.api.model.ErrorPrinter
-import net.wh64.api.model.HealthCheck
-import net.wh64.api.model.ResultPrinter
+import net.wh64.api.model.*
 import net.wh64.api.service.*
 import net.wh64.api.util.Keygen
 import net.wh64.api.util.database
+import org.apache.commons.mail.SimpleEmail
 import java.util.*
 import javax.naming.AuthenticationException
-import kotlin.math.ceil
 import kotlin.time.Duration.Companion.seconds
 
 private const val REPO_URL = "https://github.com/wh64dev/wh64-api.git"
 
 fun Application.configureRouting() {
-    val healthCheck = DatabaseHealthCheck(database)
+    val emailVerifier = EmailVerifyService(database)
     val sendService = SendService(database)
     val auth = AuthService(database)
 
@@ -36,6 +34,7 @@ fun Application.configureRouting() {
             rateLimiter(limit = 5, refillPeriod = 3.seconds)
         }
     }
+
     install(ContentNegotiation) {
         json()
     }
@@ -66,10 +65,12 @@ fun Application.configureRouting() {
         }
 
         exception<AuthenticationException> { call, cause ->
-            call.respond(HttpStatusCode.Unauthorized, ErrorPrinter(
-                status = HttpStatusCode.Unauthorized.value,
-                errno = cause.toString()
-            ))
+            call.respond(
+                HttpStatusCode.Unauthorized, ErrorPrinter(
+                    status = HttpStatusCode.Unauthorized.value,
+                    errno = cause.toString()
+                )
+            )
         }
     }
 
@@ -81,9 +82,22 @@ fun Application.configureRouting() {
             validate { credential ->
                 val contain = credential.payload.audience.contains(Config.jwt_audience)
                 val id = UUID.fromString(credential.payload.getClaim("user_id").asString().replace("\"", ""))
-                val exist = auth.find(id) != null
+                val acc = auth.find(id)
+                val exist = acc != null
 
-                if (contain && exist) JWTPrincipal(credential.payload) else null
+                return@validate if (contain && exist) {
+                    val data = JWTPrincipal(credential.payload)
+                    if (acc?.lastLogin != null) {
+                        val issued = data.payload.issuedAt.time
+                        if (acc.lastLogin > issued) {
+                            return@validate null
+                        }
+                    }
+
+                    data
+                } else {
+                    null
+                }
             }
 
             challenge { _, _ ->
@@ -100,14 +114,9 @@ fun Application.configureRouting() {
         route("/v1") {
             get {
                 val start = System.currentTimeMillis()
-                val id = healthCheck.insert(start)
-
                 call.respond(
                     HttpStatusCode.OK,
-                    ResultPrinter(
-                        response_time = "${System.currentTimeMillis() - start}ms",
-                        data = mapOf("id" to id)
-                    )
+                    HC(response_time = "${System.currentTimeMillis() - start}ms")
                 )
             }
 
@@ -136,46 +145,36 @@ fun Application.configureRouting() {
                 )
             }
 
-            get("/hc") {
-                val start = System.currentTimeMillis()
-                val default = 5
+            route("/hanriver") {
+                get {
+                    val start = System.currentTimeMillis()
+                    val data = HanRiverService(2).build()
 
-                val page = call.parameters["page"]?.toIntOrNull()
-                val size = call.parameters["size"]?.toIntOrNull() ?: default
-
-                if (healthCheck.count() == 0) {
-                    return@get call.respond(
+                    call.respond(
                         HttpStatusCode.OK,
-                        ResultPrinter(
-                            response_time = "${System.currentTimeMillis() - start}ms",
-                            data = listOf<HealthCheck>()
+                        HanRiverResp(
+                            ok = if (data.temp == -1.0) 0 else 1,
+                            data = data,
+                            response_time = "${System.currentTimeMillis() - start}ms"
                         )
                     )
                 }
 
-                if (page != null) {
-                    if (page <= 0 || ceil(healthCheck.count().toDouble() / size.toDouble()).toInt() < page) {
-                        throw BadRequestException("`page` parameter must 1~${ceil(healthCheck.count().toDouble() / size.toDouble()).toInt()}")
-                    }
-                }
+                get("/{area}") {
+                    val area = call.parameters["area"]!!
 
-                if (size <= 0 || size > healthCheck.count()) {
-                    throw BadRequestException("`size` parameter must 1~${healthCheck.count()}")
-                }
+                    val start = System.currentTimeMillis()
+                    val data = HanRiverService(area.toInt()).build()
 
-                val data = if (page == null) {
-                    healthCheck.query(size)
-                } else {
-                    healthCheck.queryPage(page, size)
-                }
-
-                call.respond(
-                    HttpStatusCode.OK,
-                    ResultPrinter(
-                        response_time = "${System.currentTimeMillis() - start}ms",
-                        data = data
+                    call.respond(
+                        HttpStatusCode.OK,
+                        HanRiverResp(
+                            ok = if (data.temp == -1.0) 0 else 1,
+                            data = data,
+                            response_time = "${System.currentTimeMillis() - start}ms"
+                        )
                     )
-                )
+                }
             }
 
             route("/auth") {
@@ -183,12 +182,12 @@ fun Application.configureRouting() {
                     val start = System.currentTimeMillis()
                     val form = call.receiveParameters()
 
-                    val username = form["username"] ?: throw Exception("`username` parameter must not be null")
-                    val password = form["password"] ?: throw Exception("`password` parameter must not be null")
+                    val username = form["username"] ?: throw BadRequestException("`username` parameter must not be null")
+                    val password = form["password"] ?: throw BadRequestException("`password` parameter must not be null")
 
                     val data = AuthData(username, password)
                     val res = auth.find(data) ?: throw AuthenticationException("username or password not matches")
-                    val token = Keygen.token(res)
+                    val token = Keygen.token(auth, res)
 
                     call.respond(
                         HttpStatusCode.OK, ResultPrinter(
@@ -201,14 +200,9 @@ fun Application.configureRouting() {
                 put("/register") {
                     val start = System.currentTimeMillis()
                     val form = call.receiveParameters()
-                    val username = form["username"] ?: throw Exception("`username` parameter must not be null")
-                    val password = form["password"] ?: throw Exception("`password` parameter must not be null")
-                    val checkPW = form["password_check"] ?: throw Exception("`password_check` parameter must not be null")
-                    val email = form["email"] ?: throw Exception("`email` parameter must not be null")
-
-                    if (password != checkPW) {
-                        throw BadRequestException("`password` parameter must match password_check")
-                    }
+                    val username = form["username"] ?: throw BadRequestException("`username` parameter must not be null")
+                    val password = form["password"] ?: throw BadRequestException("`password` parameter must not be null")
+                    val email = form["email"] ?: throw BadRequestException("`email` parameter must not be null")
 
                     val acc = Account(
                         id = UUID.randomUUID(),
@@ -230,8 +224,156 @@ fun Application.configureRouting() {
                     get {
                         val start = System.currentTimeMillis()
                         val principal = call.principal<JWTPrincipal>()
+                        val userId = principal!!.payload.getClaim("user_id").asString()
+                        val account = auth.find(UUID.fromString(userId))
+                        val token = Keygen.token(auth, account!!)
 
-                        call.respond(mapOf("hello" to "world", "respond_time" to "${System.currentTimeMillis() - start}ms"))
+                        call.respond(
+                            ResultPrinter(
+                                response_time = "${System.currentTimeMillis() - start}ms",
+                                data = Refresher(
+                                    account = account,
+                                    refresh_token = token
+                                )
+                            )
+                        )
+                    }
+
+                    put("/verify") {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+                        val userId = UUID.fromString(principal!!.payload.getClaim("user_id").asString())
+                        val account = auth.find(userId)
+
+                        if (account!!.verified) {
+                            return@put call.respond(
+                                HttpStatusCode.Forbidden, ErrorPrinter(
+                                    status = HttpStatusCode.Forbidden.value,
+                                    errno = "your account is already verified"
+                                )
+                            )
+                        }
+
+                        if (emailVerifier.find(userId)) {
+                            return@put call.respond(
+                                HttpStatusCode.Forbidden, ErrorPrinter(
+                                    status = HttpStatusCode.Forbidden.value,
+                                    errno = "verify code already sent your email, please try again later"
+                                )
+                            )
+                        }
+
+                        val code = emailVerifier.create(account)
+                        val email = SimpleEmail()
+                        email.apply {
+                            hostName = Config.email_hostname
+                            setSmtpPort(Config.email_smtp_port.toInt())
+                            setAuthentication(Config.email_username, Config.email_password)
+                            isSSLOnConnect = Config.email_is_ssl.toBoolean()
+                            setFrom(Config.sender_email)
+                            subject = "WH64 API: Account Verifier"
+                            setMsg("Your verification code is: $code")
+                            addTo(account.email)
+                        }
+
+                        email.send()
+                        call.respond(
+                            HttpStatusCode.OK, HC(response_time = "${System.currentTimeMillis() - start}ms")
+                        )
+                    }
+
+                    post("/verify") {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+                        val userId = UUID.fromString(principal!!.payload.getClaim("user_id").asString())
+                        val form = call.receiveParameters()
+                        val code = form["code"] ?: throw BadRequestException("`code` parameter must not be null")
+
+                        val result = try {
+                            emailVerifier.verify(userId, code)
+                        } catch (ex: NotImplementedError) {
+                            return@post call.respond(
+                                HttpStatusCode.Forbidden, ErrorPrinter(
+                                    status = HttpStatusCode.Forbidden.value,
+                                    errno = "verify code not matches"
+                                )
+                            )
+                        }
+
+                        if (!result) {
+                            return@post call.respond(
+                                HttpStatusCode.Forbidden, ErrorPrinter(
+                                    status = HttpStatusCode.Forbidden.value,
+                                    errno = "verify code is expired"
+                                )
+                            )
+                        }
+
+                        emailVerifier.delete(userId)
+                        auth.verify(userId)
+
+                        call.respond(
+                            HttpStatusCode.OK, ResultPrinter(
+                                response_time = "${System.currentTimeMillis() - start}ms",
+                                data = mapOf("request_id" to userId.toString())
+                            )
+                        )
+                    }
+
+                    patch("/edit") {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+                        val userId = principal!!.payload.getClaim("user_id").asString()
+                        val form = call.receiveParameters()
+                        val rawActType = form["action"] ?: throw BadRequestException("`action` parameter must not be null")
+                        val actType = try {
+                            AccEditType.valueOf(rawActType.uppercase())
+                        } catch (ex: Exception) {
+                            throw BadRequestException("invalid action type: $rawActType")
+                        }
+
+                        suspend fun <T> action(content: T) {
+                            auth.edit(actType, UUID.fromString(userId), content)
+
+                            call.respond(
+                                HttpStatusCode.OK, ResultPrinter(
+                                    response_time = "${System.currentTimeMillis() - start}ms",
+                                    data = AccountAction(
+                                        id = userId.toString(),
+                                        action = "edit"
+                                    )
+                                )
+                            )
+                        }
+
+                        when (actType) {
+                            AccEditType.EMAIL -> {
+                                val email = form["email"] ?: throw BadRequestException("`email` parameter must not be null")
+                                action(email)
+                            }
+
+                            AccEditType.PASSWORD -> {
+                                val password = form["password"] ?: throw BadRequestException("`password` parameter must not be null")
+                                action(password)
+                            }
+                        }
+                    }
+
+                    delete("/unregister") {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+                        val userId = principal!!.payload.getClaim("user_id").asString()
+
+                        auth.delete(UUID.fromString(userId))
+                        call.respond(
+                            HttpStatusCode.OK, ResultPrinter(
+                                response_time = "${System.currentTimeMillis() - start}ms",
+                                data = AccountAction(
+                                    id = userId.toString(),
+                                    action = "delete"
+                                )
+                            )
+                        )
                     }
                 }
             }

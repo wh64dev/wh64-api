@@ -1,11 +1,11 @@
 package net.wh64.api.service
 
 import io.ktor.util.*
-import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.Serializable
 import net.wh64.api.Config
+import net.wh64.api.util.dbQuery
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -25,11 +25,20 @@ data class Account(
     val email: String
 )
 
+@Serializable
 data class AccountInfo(
     val id: String,
     val username: String,
-    val email: String
+    val email: String,
+    val created: Long,
+    val lastLogin: Long?,
+    val verified: Boolean
 )
+
+enum class AccEditType {
+    EMAIL,
+    PASSWORD;
+}
 
 class AuthService(database: Database) {
     object AuthTable : Table("account") {
@@ -38,6 +47,9 @@ class AuthService(database: Database) {
         val password = varchar("password", 100)
         val salt = varchar("salt", 100)
         val email = varchar("email", 100).uniqueIndex()
+        val created = long("created")
+        val lastLogin = long("last_login").nullable()
+        val verified = bool("verified").default(false)
 
         override val primaryKey = PrimaryKey(id, name = "PK_account_id")
     }
@@ -48,8 +60,12 @@ class AuthService(database: Database) {
         }
     }
 
-    suspend fun <T> dbQuery(block: suspend () -> T): T =
-        newSuspendedTransaction(Dispatchers.IO) { block() }
+    private fun genSalt() = SecureRandom().let {
+        val bytes = ByteArray(Config.salt_size.toInt())
+        it.nextBytes(bytes)
+
+        bytes.encodeBase64()
+    }
 
     private suspend fun salt(username: String): String = dbQuery {
         AuthTable.select(AuthTable.salt).where(AuthTable.username.eq(username)).single()[AuthTable.salt]
@@ -66,54 +82,87 @@ class AuthService(database: Database) {
     }
 
     suspend fun create(data: Account): UUID = dbQuery {
-        val salt = SecureRandom().let {
-            val bytes = ByteArray(Config.salt_size.toInt())
-            it.nextBytes(bytes)
-
-            bytes.encodeBase64()
-        }
-
+        val salt = genSalt()
         AuthTable.insert {
             it[this.id] = data.id
             it[this.username] = data.username
             it[this.password] = hashToCount(data.password, salt)
+            it[this.created] = System.currentTimeMillis()
             it[this.salt] = salt
             it[this.email] = data.email
         }[AuthTable.id]
     }
 
-    suspend fun find(data: AuthData): Account? = dbQuery {
+    suspend fun find(data: AuthData): AccountInfo? = dbQuery {
         val salt = try {
             salt(data.username)
         } catch (_: Exception) {
             return@dbQuery null
         }
 
-        AuthTable.select(AuthTable.id, AuthTable.username, AuthTable.password, AuthTable.email)
+        AuthTable.selectAll()
             .where { AuthTable.username.eq(data.username) and AuthTable.password.eq(hashToCount(data.password, salt)) }
             .map {
-                Account(
-                    id = it[AuthTable.id],
+                AccountInfo(
+                    id = it[AuthTable.id].toString(),
                     username = it[AuthTable.username],
-                    password = it[AuthTable.password],
-                    email = it[AuthTable.email]
+                    email = it[AuthTable.email],
+                    created = it[AuthTable.created],
+                    lastLogin = it[AuthTable.lastLogin],
+                    verified = it[AuthTable.verified]
                 )
             }
             .singleOrNull()
     }
 
-    suspend fun find(id: UUID): Account? = dbQuery {
-        AuthTable.select(AuthTable.id, AuthTable.username, AuthTable.password, AuthTable.email)
+    suspend fun find(id: UUID): AccountInfo? = dbQuery {
+        AuthTable.selectAll()
             .where { AuthTable.id.eq(id) }
             .map {
-                Account(
-                    id = it[AuthTable.id],
+                AccountInfo(
+                    id = it[AuthTable.id].toString(),
                     username = it[AuthTable.username],
-                    password = it[AuthTable.password],
-                    email = it[AuthTable.email]
+                    email = it[AuthTable.email],
+                    created = it[AuthTable.created],
+                    lastLogin = it[AuthTable.lastLogin],
+                    verified = it[AuthTable.verified]
                 )
             }
             .singleOrNull()
+    }
+
+    suspend fun <T> edit(type: AccEditType, id: UUID, content: T) = dbQuery {
+        AuthTable.update({ AuthTable.id eq id }) {
+            when (type) {
+                AccEditType.EMAIL -> {
+                    it[this.email] = content.toString()
+                    it[this.verified] = false
+                }
+
+                AccEditType.PASSWORD -> {
+                    val salt = genSalt()
+
+                    it[this.password] = hashToCount(content.toString(), salt)
+                    it[this.salt] = salt
+                }
+            }
+        }
+    }
+
+    suspend fun updateIssued(id: UUID, date: Date) = dbQuery {
+        AuthTable.update({ AuthTable.id eq id }) {
+            it[lastLogin] = date.time
+        }
+    }
+
+    suspend fun verify(id: UUID) = dbQuery {
+        AuthTable.update({ AuthTable.id eq id }) {
+            it[verified] = true
+        }
+    }
+
+    suspend fun delete(id: UUID) = dbQuery {
+        AuthTable.deleteWhere { AuthTable.id eq id }
     }
 
     companion object {
