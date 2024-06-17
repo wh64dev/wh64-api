@@ -104,6 +104,20 @@ fun Application.configureSecurity() {
                         val principal = call.principal<JWTPrincipal>()
                         val userId = principal!!.payload.getClaim("user_id").asString()
                         val account = packed.auth.find(UUID.fromString(userId))
+
+                        call.respond(
+                            ResultPrinter(
+                                response_time = "${System.currentTimeMillis() - start}ms",
+                                data = account
+                            )
+                        )
+                    }
+
+                    get("/refresh") {
+                        val start = System.currentTimeMillis()
+                        val principal = call.principal<JWTPrincipal>()
+                        val userId = principal!!.payload.getClaim("user_id").asString()
+                        val account = packed.auth.find(UUID.fromString(userId))
                         val token = Keygen.token(packed.auth, account!!)
 
                         call.respond(
