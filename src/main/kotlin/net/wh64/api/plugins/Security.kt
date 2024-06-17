@@ -9,7 +9,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.wh64.api.Config
-import net.wh64.api.adapter.useAuth
 import net.wh64.api.adapter.v1
 import net.wh64.api.model.*
 import net.wh64.api.service.*
@@ -99,7 +98,7 @@ fun Application.configureSecurity() {
                     )
                 }
 
-                useAuth {
+                authenticate("auth") {
                     get {
                         val start = System.currentTimeMillis()
                         val principal = call.principal<JWTPrincipal>()
