@@ -14,6 +14,7 @@ import net.wh64.api.model.*
 import net.wh64.api.service.*
 import net.wh64.api.util.Keygen
 import net.wh64.api.util.database
+import net.wh64.api.util.verifyStr
 import org.apache.commons.mail.SimpleEmail
 import java.util.*
 import javax.naming.AuthenticationException
@@ -62,6 +63,17 @@ fun Application.configureSecurity() {
 
                     val username = form["username"] ?: throw BadRequestException("`username` parameter must not be null")
                     val password = form["password"] ?: throw BadRequestException("`password` parameter must not be null")
+                    if (username.length < 4) {
+                        throw BadRequestException("`username` parameter must have at least 4 characters")
+                    }
+
+                    if (!username.verifyStr()) {
+                        throw BadRequestException("`username` parameter must have uppercase or lowercase character and numbers and -, _")
+                    }
+
+                    if (password.length < 8) {
+                        throw BadRequestException("`password` parameter must have at least 8 characters")
+                    }
 
                     val data = AuthData(username, password)
                     val res = packed.auth.find(data) ?: throw AuthenticationException("username or password not matches")
@@ -81,6 +93,17 @@ fun Application.configureSecurity() {
                     val username = form["username"] ?: throw BadRequestException("`username` parameter must not be null")
                     val password = form["password"] ?: throw BadRequestException("`password` parameter must not be null")
                     val email = form["email"] ?: throw BadRequestException("`email` parameter must not be null")
+                    if (username.length < 4) {
+                        throw BadRequestException("`username` parameter must have at least 4 characters")
+                    }
+
+                    if (!username.verifyStr()) {
+                        throw BadRequestException("`username` can contains uppercased or lowercased character and number's and -, _")
+                    }
+
+                    if (password.length < 8) {
+                        throw BadRequestException("`password` parameter must have at least 8 characters")
+                    }
 
                     val acc = Account(
                         id = UUID.randomUUID(),
